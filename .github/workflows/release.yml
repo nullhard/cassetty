@@ -114,10 +114,11 @@ jobs:
 
   # ---------------------------------------------------------------- Build
   # Without cgo every target cross-compiles, so one runner builds all four.
+  # It runs macOS for codesign, which re-signs the macOS binaries.
   build:
     name: Build archives
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     permissions:
       contents: read
     steps:

@@ -42,11 +42,12 @@ jobs:
       - name: Run tests
         run: go test -v -race ./...
 
-  # The release targets the test jobs never compile (linux/arm64, both
-  # darwin slices on Linux), built the way the Release workflow builds them.
+  # The release archives, built the way the Release workflow builds them:
+  # all four targets on one macOS runner, which also re-signs the macOS
+  # binaries.
   build:
     name: Build release archives
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 

@@ -205,7 +205,7 @@ publishing.
 
 ```sh
 gh workflow run release.yml -f bump=auto -f dry_run=true
-# the same archives, locally
+# the same archives, locally (on macOS, which re-signs the macOS binaries)
 scripts/release-build.sh v0.0.0-dev dist
 ```
 
