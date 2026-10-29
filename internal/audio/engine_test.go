@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -93,6 +94,59 @@ func TestEnginePlaysSeeksAndEnds(t *testing.T) {
 	if p1 := e.Position(); p1 != p0 {
 		t.Fatalf("position moved while paused: %v -> %v", p0, p1)
 	}
+}
+
+// fakeOutput records whether the idle watcher has suspended it.
+type fakeOutput struct{ suspended atomic.Bool }
+
+func (o *fakeOutput) Suspend() error { o.suspended.Store(true); return nil }
+func (o *fakeOutput) Resume() error  { o.suspended.Store(false); return nil }
+
+func TestEngineSuspendsOutputWhileIdle(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tone.wav")
+	writeWAV(t, path, 44100, 300*time.Millisecond)
+	src, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The null output pulls the deck in real time, as the device would.
+	e, _ := NewEngine(true)
+	defer e.Close()
+	out := &fakeOutput{}
+	done := make(chan struct{})
+	defer close(done)
+	go e.deck.suspendWhenIdle(out, 20*time.Millisecond, done)
+
+	expect := func(suspended bool, when string) {
+		t.Helper()
+		deadline := time.Now().Add(time.Second)
+		for out.suspended.Load() != suspended {
+			if time.Now().After(deadline) {
+				t.Fatalf("output suspended = %v %s", !suspended, when)
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+	expect(true, "with nothing loaded")
+	e.Start(src, true)
+	expect(false, "after starting a track")
+	e.SetPlaying(false)
+	expect(true, "while paused")
+	e.SetPlaying(true)
+	expect(false, "after unpausing")
+	select {
+	case <-e.Events():
+	case <-time.After(2 * time.Second):
+		t.Fatal("no end-of-track event")
+	}
+	expect(true, "after the track ended")
+	if err := e.Seek(0); err != nil {
+		t.Fatal(err)
+	}
+	expect(false, "after seeking back into the track")
+	e.Eject()
+	expect(true, "after ejecting")
 }
 
 func TestOpenRejectsUnknown(t *testing.T) {

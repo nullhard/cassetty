@@ -17,6 +17,11 @@ type Event struct {
 	Err error
 }
 
+// idleSuspendDelay is how long the deck must have had nothing to play before
+// the output is suspended. It outlasts the output latency, so by then only
+// silence is queued in the device and resuming plays nothing stale.
+const idleSuspendDelay = time.Second
+
 // Engine owns the audio output and the deck that is permanently attached to
 // it. All methods are safe for concurrent use.
 type Engine struct {
@@ -26,6 +31,13 @@ type Engine struct {
 	latency int // output latency in frames
 	player  *oto.Player
 	null    *nullOutput
+	done    chan struct{} // stops the idle watcher
+}
+
+// output is the part of the oto context that the idle watcher drives.
+type output interface {
+	Suspend() error
+	Resume() error
 }
 
 // NewEngine initialises the audio output. When silent is true, or no audio
@@ -33,7 +45,7 @@ type Engine struct {
 // samples in real time; InitErr then reports why the device was not used.
 func NewEngine(silent bool) (e *Engine, initErr error) {
 	e = &Engine{events: make(chan Event, 8)}
-	e.deck = &deck{gain: 1, events: e.events, tap: newTap(1 << 15)}
+	e.deck = &deck{gain: 1, events: e.events, tap: newTap(1 << 15), wake: make(chan struct{}, 1)}
 
 	if !silent {
 		const buffer = 100 * time.Millisecond
@@ -53,6 +65,8 @@ func NewEngine(silent bool) (e *Engine, initErr error) {
 			e.player.SetBufferSize(SampleRate.N(buffer/2) * 8)
 			e.player.Play()
 			e.latency = SampleRate.N(buffer) * 3 / 4
+			e.done = make(chan struct{})
+			go e.deck.suspendWhenIdle(ctx, idleSuspendDelay, e.done)
 			return e, nil
 		}
 		initErr = err
@@ -67,6 +81,9 @@ func (e *Engine) Silent() bool { return e.silent }
 
 // Close stops the output.
 func (e *Engine) Close() {
+	if e.done != nil {
+		close(e.done)
+	}
 	if e.null != nil {
 		e.null.stop()
 	} else if e.player != nil {
@@ -96,6 +113,7 @@ func (e *Engine) Start(src *Source, play bool) uint64 {
 	d.playing = play
 	d.ended = false
 	d.mu.Unlock()
+	d.changed()
 	if old != nil && old != src {
 		old.Close()
 	}
@@ -111,6 +129,7 @@ func (e *Engine) Eject() {
 	d.src, d.stream = nil, nil
 	d.playing = false
 	d.mu.Unlock()
+	d.changed()
 	old.Close()
 }
 
@@ -119,6 +138,7 @@ func (e *Engine) SetPlaying(play bool) {
 	e.deck.mu.Lock()
 	e.deck.playing = play
 	e.deck.mu.Unlock()
+	e.deck.changed()
 }
 
 // Seek moves the play head of the loaded track to t.
@@ -142,6 +162,7 @@ func (e *Engine) Seek(t time.Duration) error {
 	// Recreate the resampler so no stale samples from before the seek play.
 	d.stream = wrapStream(d.src)
 	d.ended = false
+	d.changed()
 	return nil
 }
 
@@ -194,13 +215,69 @@ type deck struct {
 	gain    float64
 	events  chan<- Event
 	tap     *tap
+	wake    chan struct{} // signalled whenever idle may have changed
+}
+
+// idle reports whether the deck has nothing to play and emits silence.
+// The caller must hold d.mu.
+func (d *deck) idle() bool {
+	return d.stream == nil || !d.playing || d.ended
+}
+
+// changed tells the idle watcher that idle may have changed. It never
+// blocks, so Stream can call it on the output's goroutine.
+func (d *deck) changed() {
+	select {
+	case d.wake <- struct{}{}:
+	default:
+	}
+}
+
+// suspendWhenIdle suspends out once the deck has had nothing to play for
+// delay, so that while stopped, paused or ejected neither cassetty nor the
+// system's audio server keeps rendering silence, and resumes it as soon as
+// the deck has something to play again. It runs until done is closed.
+//
+// Stream must not suspend the output itself: the ALSA backend holds its
+// lock while it pulls samples, and Suspend takes that lock.
+func (d *deck) suspendWhenIdle(out output, delay time.Duration, done <-chan struct{}) {
+	suspended := false
+	timer := time.NewTimer(delay) // nothing is loaded yet
+	defer timer.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-d.wake:
+			d.mu.Lock()
+			idle := d.idle()
+			d.mu.Unlock()
+			if !idle {
+				timer.Stop()
+				if suspended {
+					out.Resume()
+					suspended = false
+				}
+			} else if !suspended {
+				timer.Reset(delay)
+			}
+		case <-timer.C:
+			d.mu.Lock()
+			idle := d.idle()
+			d.mu.Unlock()
+			if idle && !suspended {
+				out.Suspend()
+				suspended = true
+			}
+		}
+	}
 }
 
 func (d *deck) Stream(samples [][2]float64) (int, bool) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if d.stream == nil || !d.playing || d.ended {
+	if d.idle() {
 		clear(samples)
 		return len(samples), true
 	}
@@ -217,6 +294,7 @@ func (d *deck) Stream(samples [][2]float64) (int, bool) {
 
 	if !ok || n == 0 {
 		d.ended = true
+		d.changed()
 		err := d.stream.Err()
 		if err == nil && d.src != nil {
 			err = d.src.stream.Err()
