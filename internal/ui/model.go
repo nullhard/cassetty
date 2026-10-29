@@ -19,6 +19,7 @@ import (
 	"github.com/nullhard/cassetty/internal/audio"
 	"github.com/nullhard/cassetty/internal/config"
 	"github.com/nullhard/cassetty/internal/library"
+	"github.com/nullhard/cassetty/internal/nowplaying"
 	"github.com/nullhard/cassetty/internal/viz"
 	"github.com/nullhard/cassetty/internal/watch"
 )
@@ -69,13 +70,15 @@ type Options struct {
 	SeekStep        time.Duration
 	Formats         library.Formats
 	Engine          *audio.Engine
-	Notice          string // shown once at startup
+	NowPlaying      *nowplaying.Session // media keys; nil where unsupported
+	Notice          string              // shown once at startup
 }
 
 // Model is the root bubbletea model.
 type Model struct {
 	opts     Options
 	engine   *audio.Engine
+	remote   *nowplaying.Session
 	theme    Theme
 	themeIdx int
 	keys     keyMap
@@ -159,6 +162,7 @@ func New(opts Options) *Model {
 	m := &Model{
 		opts:     opts,
 		engine:   opts.Engine,
+		remote:   opts.NowPlaying,
 		keys:     newKeyMap(),
 		help:     help.New(),
 		curHint:  -1,
@@ -273,6 +277,7 @@ func (m *Model) Init() tea.Cmd {
 		m.loadDir(m.dir, ""),
 		m.waitAudio(),
 		m.waitWatch(),
+		m.waitRemote(),
 		m.kickTick(),
 	)
 }
@@ -359,6 +364,7 @@ func (m *Model) animate(dt float64) {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer m.syncNowPlaying()
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -406,6 +412,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.trackEnded())
 		}
 		return m, tea.Batch(cmds...)
+
+	case remoteMsg:
+		return m, tea.Batch(m.waitRemote(), m.handleRemote(nowplaying.Command(msg)))
 
 	case tea.KeyPressMsg:
 		return m, m.handleKey(msg)
@@ -890,9 +899,10 @@ func (m *Model) trackTitle() string {
 	return ""
 }
 
-// trackSubtitle is "Artist · Album", falling back to the folder names.
-func (m *Model) trackSubtitle() string {
-	artist, album := m.meta.Artist, m.meta.Album
+// trackArtistAlbum returns the artist and album of the loaded track, falling
+// back to the names of its folders.
+func (m *Model) trackArtistAlbum() (artist, album string) {
+	artist, album = m.meta.Artist, m.meta.Album
 	if m.cur != nil {
 		dir := filepath.Dir(m.cur.Path)
 		if album == "" && dir != m.root && within(m.root, dir) {
@@ -902,6 +912,12 @@ func (m *Model) trackSubtitle() string {
 			artist = filepath.Base(parent)
 		}
 	}
+	return artist, album
+}
+
+// trackSubtitle is "Artist · Album", falling back to the folder names.
+func (m *Model) trackSubtitle() string {
+	artist, album := m.trackArtistAlbum()
 	switch {
 	case artist != "" && album != "":
 		return artist + " · " + album

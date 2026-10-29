@@ -15,16 +15,20 @@ type helpSection struct {
 
 func (m *Model) helpSections() []helpSection {
 	step := int(m.opts.SeekStep.Seconds())
+	playback := [][2]string{
+		{"space p", "play / pause"},
+		{"s v", "stop"},
+		{"z b", "previous · next  (< > n)"},
+		{"← →", fmt.Sprintf("seek %ds", step)},
+		{"⇧← ⇧→", fmt.Sprintf("seek %ds  ([ ])", 6*step)},
+		{"+ - m", "volume · mute"},
+		{"e", "eject the tape"},
+	}
+	if m.remote != nil {
+		playback = append(playback, [2]string{"media keys", "play · previous · next"})
+	}
 	return []helpSection{
-		{"PLAYBACK", [][2]string{
-			{"space p", "play / pause"},
-			{"s v", "stop"},
-			{"z b", "previous · next  (< > n)"},
-			{"← →", fmt.Sprintf("seek %ds", step)},
-			{"⇧← ⇧→", fmt.Sprintf("seek %ds  ([ ])", 6*step)},
-			{"+ - m", "volume · mute"},
-			{"e", "eject the tape"},
-		}},
+		{"PLAYBACK", playback},
 		{"LIBRARY", [][2]string{
 			{"↑↓ jk", "move  (pgup pgdn g G)"},
 			{"⏎ l", "open folder · play track"},

@@ -16,13 +16,17 @@ import (
 	"github.com/nullhard/cassetty/internal/audio"
 	"github.com/nullhard/cassetty/internal/config"
 	"github.com/nullhard/cassetty/internal/library"
+	"github.com/nullhard/cassetty/internal/nowplaying"
 	"github.com/nullhard/cassetty/internal/ui"
 )
 
 var version = "dev"
 
 func main() {
-	if err := run(); err != nil {
+	var err error
+	// On macOS the main thread delivers the media keys meanwhile.
+	nowplaying.Main(func() { err = run() })
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "cassetty:", err)
 		os.Exit(1)
 	}
@@ -107,6 +111,11 @@ flags:
 	if initErr != nil {
 		notice = "no audio device (" + initErr.Error() + ") — running silent"
 	}
+	// Media keys and the Now Playing widget, where the system has them.
+	remote, err := nowplaying.Start()
+	if err == nil {
+		defer remote.Close()
+	}
 
 	m, err := ui.Run(ui.Options{
 		Root:            root,
@@ -120,6 +129,7 @@ flags:
 		SeekStep:        time.Duration(cfg.SeekStep) * time.Second,
 		Formats:         library.NewFormats(audio.SupportedFormats()),
 		Engine:          engine,
+		NowPlaying:      remote,
 		Notice:          notice,
 	})
 	if err != nil {
