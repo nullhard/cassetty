@@ -216,10 +216,19 @@ LIBRARY = [
         ("Azimuth", "mp3", dict(bpm=116, prog=prog(61, (0, "maj"), (7, "maj"), (9, "min"), (5, "maj")), loops=24)),
         ("Bias Tone", "mp3", dict(bpm=88, prog=prog(56, (0, "min"), (8, "maj"), (3, "maj"), (10, "maj")), loops=17)),
     ]),
+    # The album the demos play.
     ("The Hiss Choir", "Chrome Position", "1991", [
-        ("Leader Tape", "mp3", dict(bpm=110, prog=prog(63, (0, "maj"), (5, "maj"), (2, "min"), (7, "maj")), loops=22)),
-        ("Erase Head", "mp3", dict(bpm=128, prog=prog(53, (0, "min"), (5, "min"), (7, "min"), (3, "maj")), loops=30)),
-        ("Dub Speed", "mp3", dict(bpm=94, prog=prog(60, (0, "min"), (-4, "maj"), (3, "maj"), (-2, "maj")), loops=18)),
+        ("Rewind It With a Pencil", "mp3", dict(bpm=110, prog=prog(63, (0, "maj"), (5, "maj"), (2, "min"), (7, "maj")), loops=22)),
+        ("Degauss Me Gently", "mp3", dict(bpm=104, prog=prog(62, (0, "maj"), (7, "maj"), (9, "min"), (5, "maj")), loops=21)),
+        ("How Do I Exit Vim", "mp3", dict(bpm=128, prog=prog(53, (0, "min"), (5, "min"), (7, "min"), (3, "maj")), loops=30)),
+        ("Burned Into My Phosphor", "mp3", dict(bpm=94, prog=prog(60, (0, "min"), (-4, "maj"), (3, "maj"), (-2, "maj")), loops=18)),
+        ("Ctrl-S Froze My Heart", "mp3", dict(bpm=118, prog=prog(57, (0, "min"), (5, "maj"), (8, "maj"), (3, "maj")), loops=25)),
+        ("Tape Spaghetti", "mp3", dict(bpm=122, prog=prog(58, (0, "maj"), (7, "maj"), (5, "maj"), (2, "min")), loops=26)),
+        ("Kill -9 My Darling", "mp3", dict(bpm=112, prog=prog(59, (0, "min"), (8, "maj"), (3, "maj"), (10, "maj")), loops=23)),
+        ("The 15 kHz Whine", "mp3", dict(bpm=126, prog=prog(52, (0, "min"), (3, "maj"), (5, "maj"), (10, "maj")), loops=24)),
+        ("Heart Dumped (Segmentation Fault)", "mp3", dict(bpm=96, prog=prog(60, (0, "maj"), (4, "min"), (5, "maj"), (7, "maj")), loops=19)),
+        ("Side B Is Forty Minutes of Hiss", "mp3", dict(bpm=88, prog=prog(61, (0, "maj"), (9, "min"), (4, "min"), (5, "maj")), loops=20)),
+        ("Command Not Found", "mp3", dict(bpm=116, prog=prog(54, (0, "min"), (5, "min"), (3, "maj"), (8, "maj")), loops=24)),
     ]),
     ("Night Drive Tapes", "Vol. 2", "1989", [
         ("Sodium Lights", "mp3", dict(bpm=118, prog=prog(57, (0, "min"), (5, "min"), (-2, "maj"), (3, "maj")), loops=25)),

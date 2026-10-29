@@ -56,8 +56,6 @@ Sleep 300ms
 Down
 Sleep 300ms
 Down
-Sleep 300ms
-Down
 Sleep 700ms
 Enter
 Sleep 700ms
