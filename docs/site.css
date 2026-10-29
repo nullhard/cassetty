@@ -100,12 +100,48 @@ body {
   min-height: 100vh;
   font: 15px/1.6 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   background-color: var(--bg);
-  /* speaker grille */
-  background-image: radial-gradient(var(--hover) 1.1px, transparent 1.6px);
-  background-size: 7px 7px;
   transition: background-color .35s, color .35s;
   -webkit-font-smoothing: antialiased;
+  isolation: isolate;
 }
+
+/* The window is a CRT: phosphor glow, scanlines, an aperture grille and a
+   slow refresh band behind the page, the tube's rounded corners over it. */
+.crt, body::after { position: fixed; inset: 0; pointer-events: none; }
+.crt {
+  z-index: -1;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 75% 65% at 50% 42%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 72%),
+    repeating-linear-gradient(to bottom, color-mix(in srgb, var(--text) 3%, transparent) 0 1px, transparent 1px 2px, rgba(0, 0, 0, var(--crt-line, .3)) 2px 3px),
+    repeating-linear-gradient(to right, rgba(255, 40, 40, .025) 0 1px, rgba(40, 255, 40, .025) 1px 2px, rgba(40, 80, 255, .025) 2px 3px);
+  animation: crt-flicker 7s steps(1) infinite;
+}
+.crt::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 35vh;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--text) 4%, transparent) 70%, transparent);
+  animation: crt-roll 9s linear infinite;
+}
+.crt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 110% 100% at 50% 50%, transparent 55%, rgba(0, 0, 0, var(--crt-vignette, .55)));
+}
+body::after {
+  content: "";
+  z-index: 100;
+  border-radius: 28px / 22px;
+  box-shadow: 0 0 0 40px #000, inset 0 0 24px 6px rgba(0, 0, 0, .55);
+  background: linear-gradient(165deg, rgba(255, 255, 255, .035), transparent 38%);
+}
+[data-theme="silverface"] { --crt-line: .1; --crt-vignette: .3; }
+
+@keyframes crt-roll { from { transform: translateY(-100%); } to { transform: translateY(100vh); } }
+@keyframes crt-flicker { 0%, 100% { opacity: 1; } 41% { opacity: .94; } 42% { opacity: 1; } 77% { opacity: .96; } 78% { opacity: 1; } }
 
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--text); }
@@ -323,4 +359,6 @@ footer a { color: var(--muted); }
 }
 @media (prefers-reduced-motion: reduce) {
   body, .key, .skins button { transition: none; }
+  .crt, .crt::before { animation: none; }
+  .crt::before { display: none; }
 }
