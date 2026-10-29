@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <b><a href="https://nullhard.github.io/cassetty/">Website</a></b> ·
+  <b><a href="https://cassetty.io">Website</a></b> ·
   <a href="#install">Install</a> ·
   <a href="#usage">Usage</a> ·
   <a href="#keys">Keys</a> ·
