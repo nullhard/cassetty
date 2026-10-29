@@ -14,7 +14,8 @@ import (
 
 // Config is the user editable configuration file.
 type Config struct {
-	// MusicDir is the root folder of the media library.
+	// MusicDir is the root folder of the media library. When empty,
+	// DefaultMusicDir is used.
 	MusicDir string `toml:"music_dir"`
 	// Theme, when set, is used at every start instead of the theme
 	// remembered from the last run: one of "classic", "amber", "vfd",
@@ -34,7 +35,6 @@ type Config struct {
 // Default returns the built-in configuration.
 func Default() Config {
 	return Config{
-		MusicDir:        "~/Music",
 		Volume:          70,
 		PaintBackground: true,
 		SeekStep:        5,
@@ -69,7 +69,8 @@ func Load(path string) (Config, error) {
 const Sample = `# cassetty configuration
 
 # Root folder of your music library. The browser never leaves this folder.
-music_dir = "~/Music"
+# Unset, cassetty opens ~/Music if it exists, otherwise the current folder.
+# music_dir = "~/Music"
 
 # Color theme: "sunbleached" (faded rainbow, the default), "classic" (Winamp green),
 # "amber", "vfd" (cyan display), "synthwave", "silverface" (silver hi-fi) or
@@ -136,6 +137,20 @@ func SaveState(s State) error {
 		return err
 	}
 	return os.WriteFile(p, b, 0o644)
+}
+
+// DefaultMusicDir is the library root used when neither the command line nor
+// the config names one: ~/Music if it exists, otherwise the current folder.
+func DefaultMusicDir() string {
+	if dir := ExpandHome("~/Music"); isDir(dir) {
+		return dir
+	}
+	return "."
+}
+
+func isDir(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
 }
 
 // ExpandHome replaces a leading ~ with the home directory.

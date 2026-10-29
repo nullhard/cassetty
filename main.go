@@ -76,6 +76,8 @@ flags:
 		root = *dirFlag
 	case flag.NArg() > 0:
 		root = flag.Arg(0)
+	case root == "":
+		root = config.DefaultMusicDir()
 	}
 	root, err = filepath.Abs(config.ExpandHome(root))
 	if err != nil {

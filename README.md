@@ -126,7 +126,8 @@ cassetty [flags] [music folder]
 ```
 
 The folder argument wins over the config file; without either cassetty opens
-`~/Music`. The browser never leaves that root folder.
+`~/Music`, or the current folder if there is no `~/Music`. The browser never
+leaves that root folder.
 
 ## Keys
 
@@ -179,7 +180,7 @@ Press `t` to cycle, pass `-theme`, or set `theme` in the config.
 or `$CASSETTY_CONFIG`). Create a commented one with `cassetty -init-config`:
 
 ```toml
-music_dir = "~/Music"      # root of the library
+music_dir = "~/Music"      # root of the library (unset: ~/Music, else the current folder)
 theme = "sunbleached"      # always start in this theme (unset: the last one used)
 volume = 70                # initial volume in percent
 show_hidden = false        # list dot files and folders
