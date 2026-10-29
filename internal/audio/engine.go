@@ -1,0 +1,320 @@
+package audio
+
+import (
+	"encoding/binary"
+	"math"
+	"sync"
+	"time"
+
+	"github.com/ebitengine/oto/v3"
+	"github.com/gopxl/beep/v2"
+)
+
+// Event is emitted when the currently loaded track has played to its end (or
+// failed while streaming).
+type Event struct {
+	Gen uint64 // generation of the track that ended, see Engine.Start
+	Err error
+}
+
+// Engine owns the audio output and the deck that is permanently attached to
+// it. All methods are safe for concurrent use.
+type Engine struct {
+	deck    *deck
+	events  chan Event
+	silent  bool
+	latency int // output latency in frames
+	player  *oto.Player
+	null    *nullOutput
+}
+
+// NewEngine initialises the audio output. When silent is true, or no audio
+// device can be opened, the engine runs against a null output that consumes
+// samples in real time; InitErr then reports why the device was not used.
+func NewEngine(silent bool) (e *Engine, initErr error) {
+	e = &Engine{events: make(chan Event, 8)}
+	e.deck = &deck{gain: 1, events: e.events, tap: newTap(1 << 15)}
+
+	if !silent {
+		const buffer = 100 * time.Millisecond
+		ctx, ready, err := oto.NewContext(&oto.NewContextOptions{
+			SampleRate:      int(SampleRate),
+			ChannelCount:    2,
+			Format:          oto.FormatFloat32LE,
+			BufferSize:      buffer / 2,
+			ApplicationName: "cassetty",
+		})
+		if err == nil {
+			<-ready
+			err = ctx.Err()
+		}
+		if err == nil {
+			e.player = ctx.NewPlayer(&pcmReader{s: e.deck})
+			e.player.SetBufferSize(SampleRate.N(buffer/2) * 8)
+			e.player.Play()
+			e.latency = SampleRate.N(buffer) * 3 / 4
+			return e, nil
+		}
+		initErr = err
+	}
+	e.silent = true
+	e.null = startNullOutput(e.deck)
+	return e, initErr
+}
+
+// Silent reports whether the engine is running without a sound device.
+func (e *Engine) Silent() bool { return e.silent }
+
+// Close stops the output.
+func (e *Engine) Close() {
+	if e.null != nil {
+		e.null.stop()
+	} else if e.player != nil {
+		e.player.Close()
+	}
+	e.deck.mu.Lock()
+	src := e.deck.src
+	e.deck.src, e.deck.stream = nil, nil
+	e.deck.mu.Unlock()
+	src.Close()
+}
+
+// Events delivers end-of-track notifications.
+func (e *Engine) Events() <-chan Event { return e.events }
+
+// Start installs src as the current track, replacing (and closing) the
+// previous one. It returns the generation number of the new track, which is
+// carried by the matching end-of-track Event.
+func (e *Engine) Start(src *Source, play bool) uint64 {
+	d := e.deck
+	d.mu.Lock()
+	old := d.src
+	d.gen++
+	gen := d.gen
+	d.src = src
+	d.stream = wrapStream(src)
+	d.playing = play
+	d.ended = false
+	d.mu.Unlock()
+	if old != nil && old != src {
+		old.Close()
+	}
+	return gen
+}
+
+// Eject unloads the current track.
+func (e *Engine) Eject() {
+	d := e.deck
+	d.mu.Lock()
+	old := d.src
+	d.gen++
+	d.src, d.stream = nil, nil
+	d.playing = false
+	d.mu.Unlock()
+	old.Close()
+}
+
+// SetPlaying starts or pauses playback of the loaded track.
+func (e *Engine) SetPlaying(play bool) {
+	e.deck.mu.Lock()
+	e.deck.playing = play
+	e.deck.mu.Unlock()
+}
+
+// Seek moves the play head of the loaded track to t.
+func (e *Engine) Seek(t time.Duration) error {
+	d := e.deck
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.src == nil {
+		return errNoSource
+	}
+	n := d.src.format.SampleRate.N(t)
+	if n < 0 {
+		n = 0
+	}
+	if l := d.src.stream.Len(); l > 0 && n >= l {
+		n = l - 1
+	}
+	if err := d.src.stream.Seek(n); err != nil {
+		return err
+	}
+	// Recreate the resampler so no stale samples from before the seek play.
+	d.stream = wrapStream(d.src)
+	d.ended = false
+	return nil
+}
+
+// Position returns the play head position of the loaded track.
+func (e *Engine) Position() time.Duration {
+	d := e.deck
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.src == nil {
+		return 0
+	}
+	return d.src.format.SampleRate.D(d.src.stream.Position())
+}
+
+// SetVolume sets the output volume; v is a linear slider value in [0, 1]
+// that is mapped onto a perceptual (squared) gain curve.
+func (e *Engine) SetVolume(v float64) {
+	v = max(0, min(1, v))
+	e.deck.mu.Lock()
+	e.deck.gain = v * v
+	e.deck.mu.Unlock()
+}
+
+// Snapshot copies the most recently played frames into dst, compensating
+// for the output latency so the visualizers line up with what is audible.
+func (e *Engine) Snapshot(dst [][2]float64) {
+	e.deck.tap.read(dst, e.latency)
+}
+
+// wrapStream returns the source stream converted to the output sample rate.
+func wrapStream(src *Source) beep.Streamer {
+	if src == nil {
+		return nil
+	}
+	if src.format.SampleRate == SampleRate {
+		return src.stream
+	}
+	return beep.Resample(4, src.format.SampleRate, SampleRate, src.stream)
+}
+
+// deck is the single streamer attached to the output. It never drains: when
+// nothing is playing it emits silence.
+type deck struct {
+	mu      sync.Mutex
+	src     *Source
+	stream  beep.Streamer
+	gen     uint64
+	playing bool
+	ended   bool
+	gain    float64
+	events  chan<- Event
+	tap     *tap
+}
+
+func (d *deck) Stream(samples [][2]float64) (int, bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.stream == nil || !d.playing || d.ended {
+		clear(samples)
+		return len(samples), true
+	}
+
+	n, ok := d.stream.Stream(samples)
+	if n > 0 {
+		d.tap.write(samples[:n])
+		for i := range samples[:n] {
+			samples[i][0] *= d.gain
+			samples[i][1] *= d.gain
+		}
+	}
+	clear(samples[n:])
+
+	if !ok || n == 0 {
+		d.ended = true
+		err := d.stream.Err()
+		if err == nil && d.src != nil {
+			err = d.src.stream.Err()
+		}
+		select {
+		case d.events <- Event{Gen: d.gen, Err: err}:
+		default:
+		}
+	}
+	return len(samples), true
+}
+
+func (d *deck) Err() error { return nil }
+
+// pcmReader adapts a streamer to the float32 little-endian stereo byte
+// stream consumed by oto.
+type pcmReader struct {
+	s   beep.Streamer
+	buf [][2]float64
+}
+
+func (r *pcmReader) Read(p []byte) (int, error) {
+	n := len(p) / 8
+	if n == 0 {
+		return 0, nil
+	}
+	if len(r.buf) < n {
+		r.buf = make([][2]float64, n)
+	}
+	r.s.Stream(r.buf[:n])
+	for i, f := range r.buf[:n] {
+		binary.LittleEndian.PutUint32(p[i*8:], math.Float32bits(float32(max(-1, min(1, f[0])))))
+		binary.LittleEndian.PutUint32(p[i*8+4:], math.Float32bits(float32(max(-1, min(1, f[1])))))
+	}
+	return n * 8, nil
+}
+
+// nullOutput pulls samples from a streamer in real time without playing
+// them, for machines without a sound device (and for testing).
+type nullOutput struct {
+	done chan struct{}
+}
+
+func startNullOutput(s beep.Streamer) *nullOutput {
+	o := &nullOutput{done: make(chan struct{})}
+	go func() {
+		t := time.NewTicker(10 * time.Millisecond)
+		defer t.Stop()
+		buf := make([][2]float64, 4096)
+		last := time.Now()
+		for {
+			select {
+			case <-o.done:
+				return
+			case now := <-t.C:
+				n := SampleRate.N(now.Sub(last))
+				last = now
+				for n > 0 {
+					k := min(n, len(buf))
+					s.Stream(buf[:k])
+					n -= k
+				}
+			}
+		}
+	}()
+	return o
+}
+
+func (o *nullOutput) stop() { close(o.done) }
+
+// tap is a ring buffer of the most recently played (pre-volume) frames.
+type tap struct {
+	mu  sync.Mutex
+	buf [][2]float64
+	w   int // total frames written
+}
+
+func newTap(size int) *tap { return &tap{buf: make([][2]float64, size)} }
+
+func (t *tap) write(s [][2]float64) {
+	t.mu.Lock()
+	for _, f := range s {
+		t.buf[t.w%len(t.buf)] = f
+		t.w++
+	}
+	t.mu.Unlock()
+}
+
+func (t *tap) read(dst [][2]float64, delay int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	end := t.w - delay
+	for i := range dst {
+		idx := end - len(dst) + i
+		if idx < 0 || idx < t.w-len(t.buf) {
+			dst[i] = [2]float64{}
+			continue
+		}
+		dst[i] = t.buf[idx%len(t.buf)]
+	}
+}

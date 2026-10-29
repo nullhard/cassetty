@@ -1,0 +1,226 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (auto derives it from conventional commits)"
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+        default: auto
+      dry_run:
+        description: "Build and render release artifacts without publishing"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------- Verify
+  # Tests and govulncheck execute third-party code (every dependency's init,
+  # a `go install`), so they run here with a read-only token.
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v -race ./...
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck ./...
+
+  # ---------------------------------------------------------------- Prepare
+  prepare:
+    name: Prepare release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.cliff.outputs.version }}
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Full history + tags: git-cliff derives the next version from
+          # conventional commits since the last tag.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compute next version and release notes
+        id: cliff
+        uses: orhun/git-cliff-action@a9a95522b26fe6403f7bb24031f21fb573d0f5ff # v4
+        with:
+          config: cliff.toml
+          args: --bump=${{ inputs.bump }} --unreleased
+        env:
+          OUTPUT: release-notes.md
+
+      - name: Validate computed tag
+        env:
+          TAG: ${{ steps.cliff.outputs.version }}
+        run: |
+          echo "Next version: $TAG"
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::git-cliff computed '$TAG', expected vX.Y.Z"; exit 1
+          fi
+
+      - name: Check tag doesn't exist
+        if: inputs.dry_run == false
+        env:
+          TAG: ${{ steps.cliff.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag '$TAG' already exists — nothing releasable since the last release?"
+            exit 1
+          fi
+
+      # The release is cut from the commit the workflow ran on, even if the
+      # branch moves on while it builds.
+      - name: Record release commit
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- Build
+  # Without cgo every target cross-compiles, so one runner builds all four.
+  build:
+    name: Build archives
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: scripts/release-build.sh "$TAG" dist
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dist
+          path: dist/*
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- Publish
+  release:
+    name: Publish release
+    needs: [prepare, build]
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          # The write token goes only to the tag push and the release step,
+          # not into .git/config.
+          persist-credentials: false
+
+      - name: Download release notes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-notes
+
+      - name: Show release notes
+        run: cat release-notes.md
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: dist
+          path: dist
+
+      - name: Verify checksums
+        run: (cd dist && sha256sum -c checksums.txt)
+
+      # Only on a real publish: attesting a dry run would create a permanent,
+      # publicly verifiable provenance record for artifacts that were never
+      # released.
+      - name: Attest build provenance
+        if: inputs.dry_run == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: inputs.dry_run == true
+        with:
+          name: release-artifacts
+          path: |
+            dist/*
+            release-notes.md
+
+      # The tag is pushed only once every artifact exists, so a failed build
+      # leaves no orphan tag behind. Re-running the job after a failed
+      # publish finds its own tag and carries on.
+      - name: Create tag
+        if: inputs.dry_run == false
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          existing="$(git ls-remote origin "refs/tags/$TAG^{}" | cut -f1)"
+          if [ -n "$existing" ]; then
+            if [ "$existing" != "$SHA" ]; then
+              echo "::error::Tag '$TAG' already exists at $existing, not $SHA"; exit 1
+            fi
+            echo "Tag $TAG already points at $SHA."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG" "$SHA"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c http.extraheader="$auth" push origin "refs/tags/$TAG"
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        if: inputs.dry_run == false
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ needs.prepare.outputs.sha }}
+          body_path: release-notes.md
+          make_latest: true
+          files: dist/*
+          fail_on_unmatched_files: true

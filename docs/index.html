@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" data-theme="sunbleached">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cassetty — a cassette deck music player for the terminal</title>
+<meta name="description" content="A terminal music player for macOS and Linux: spinning cassette reels, a seven-segment LCD, spectrum analyzer and seven skins.">
+<meta property="og:title" content="cassetty">
+<meta property="og:description" content="A cassette deck music player for the terminal. macOS and Linux.">
+<meta property="og:image" content="https://nullhard.github.io/cassetty/media/sunbleached.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;0,800;1,400&family=VT323&display=swap">
+<link rel="stylesheet" href="site.css">
+<script>
+  // Apply a remembered skin before the first paint.
+  try {
+    const t = localStorage.getItem("cassetty-theme");
+    if (t) document.documentElement.dataset.theme = t;
+  } catch {}
+</script>
+</head>
+<body>
+<div class="bands" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+
+<header class="top wrap">
+  <nav>
+    <a href="#install">install</a>
+    <a href="#keys">keys</a>
+    <a href="https://github.com/nullhard/cassetty">github&nbsp;↗</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <div class="pitch">
+      <h1>cassetty</h1>
+      <p class="lede">A cassette deck music player for your terminal. Spinning reels, a seven&#8209;segment LCD, a spectrum analyzer and your music folder.</p>
+      <p class="specs">macOS &amp; Linux · keyboard &amp; mouse · MP3 FLAC WAV OGG, more with ffmpeg</p>
+    </div>
+  </section>
+
+  <section class="deck wrap" aria-label="Demo">
+    <div class="skins" role="group" aria-label="Skin">
+      <span class="skins-label">SKIN</span>
+      <button type="button" data-skin="sunbleached" aria-pressed="true"><i style="--s1:#e38b86;--s2:#eaa978;--s3:#e8d08a;--s4:#a6c99a;--s5:#8fb8d6"></i>sunbleached</button>
+      <button type="button" data-skin="silverface" aria-pressed="false"><i style="--s1:#1f5a9e;--s2:#3f70aa;--s3:#5f87b5;--s4:#7f9ec0;--s5:#9fb4cc"></i>silverface</button>
+      <button type="button" data-skin="cyberdeck" aria-pressed="false"><i style="--s1:#ff2a6d;--s2:#cd2db6;--s3:#9b30ff;--s4:#4e90ff;--s5:#00f0ff"></i>cyberdeck</button>
+      <button type="button" data-skin="classic" aria-pressed="false"><i style="--s1:#e2522f;--s2:#e6682c;--s3:#ea7e28;--s4:#ee9325;--s5:#f2a922"></i>classic</button>
+      <button type="button" data-skin="amber" aria-pressed="false"><i style="--s1:#7a3b12;--s2:#944f15;--s3:#ad6218;--s4:#c6761b;--s5:#e08a1e"></i>amber</button>
+      <button type="button" data-skin="vfd" aria-pressed="false"><i style="--s1:#2f6fdb;--s2:#3a8ce0;--s3:#44a9e6;--s4:#4ec6eb;--s5:#59e3f0"></i>vfd</button>
+      <button type="button" data-skin="synthwave" aria-pressed="false"><i style="--s1:#ff5fd2;--s2:#de7fdd;--s3:#bda0e8;--s4:#9cc0f4;--s5:#7be0ff"></i>synthwave</button>
+      <span class="skins-hint">or press <kbd>t</kbd></span>
+    </div>
+
+    <figure class="screen">
+      <div class="screen-bar"><span class="leds" aria-hidden="true"><i></i><i></i><i></i></span><span>cassetty ~/Music</span><span id="skin-name">sunbleached</span></div>
+      <div class="glass">
+        <video id="demo" src="media/sunbleached.mp4" poster="media/sunbleached.png" width="1200" height="620" autoplay muted loop playsinline aria-label="cassetty playing an album"></video>
+      </div>
+      <figcaption>demo library courtesy of iTunes, September 2014</figcaption>
+    </figure>
+  </section>
+
+  <section class="wrap" id="install">
+    <h2><span>INSTALL</span></h2>
+    <div class="dl" id="download">
+      <a class="key" data-os="darwin" data-arch="arm64" href="https://github.com/nullhard/cassetty/releases/latest/download/cassetty_darwin_arm64.tar.gz"><span class="glyph">▼</span><b>macOS</b><small>Apple Silicon</small></a>
+      <a class="key" data-os="darwin" data-arch="amd64" href="https://github.com/nullhard/cassetty/releases/latest/download/cassetty_darwin_amd64.tar.gz"><span class="glyph">▼</span><b>macOS</b><small>Intel</small></a>
+      <a class="key" data-os="linux" data-arch="amd64" href="https://github.com/nullhard/cassetty/releases/latest/download/cassetty_linux_amd64.tar.gz"><span class="glyph">▼</span><b>Linux</b><small>x86-64</small></a>
+      <a class="key" data-os="linux" data-arch="arm64" href="https://github.com/nullhard/cassetty/releases/latest/download/cassetty_linux_arm64.tar.gz"><span class="glyph">▼</span><b>Linux</b><small>ARM64</small></a>
+    </div>
+    <p class="dl-meta"><span class="lcd" id="version" title="latest release">LATEST</span> <a href="https://github.com/nullhard/cassetty/releases">all releases &amp; checksums</a></p>
+    <div class="install">
+      <div class="term">
+        <div class="term-bar"><span>any Mac or Linux box</span><button type="button" class="copy" data-copy="cmd-curl">COPY</button></div>
+<pre id="cmd-curl"><span class="p">$ </span>curl -fsSL https://github.com/nullhard/cassetty/releases/latest/download/cassetty_$(uname -s | tr A-Z a-z)_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz | tar xz cassetty
+<span class="p">$ </span>sudo mv cassetty /usr/local/bin/
+<span class="p">$ </span>cassetty ~/Music</pre>
+      </div>
+      <div class="term">
+        <div class="term-bar"><span>with Go 1.26+</span><button type="button" class="copy" data-copy="cmd-go">COPY</button></div>
+<pre id="cmd-go"><span class="p">$ </span>go install github.com/nullhard/cassetty@latest</pre>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><b>macOS:</b> downloaded the archive with a browser? Clear the quarantine flag once: <code>xattr -d com.apple.quarantine cassetty</code></li>
+      <li><b>Linux:</b> plays through PulseAudio or PipeWire, falls back to ALSA.</li>
+      <li><b>More formats:</b> with <code>ffmpeg</code> on your <code>PATH</code> cassetty also plays M4A/AAC/ALAC, Opus, AIFF, WMA, APE and more.</li>
+    </ul>
+  </section>
+
+  <section class="wrap">
+    <h2><span>TRACKLIST</span></h2>
+    <div class="jcard">
+      <div class="jcard-side">
+        <h3><b>A</b> the deck</h3>
+        <ol>
+          <li><b>A1</b><span>Reels spin, tape winds across</span><i></i><em>3:25</em></li>
+          <li><b>A2</b><span>Seven-segment LCD, scrolling title</span><i></i><em>4:12</em></li>
+          <li><b>A3</b><span>Spectrum analyzer, stereo VU</span><i></i><em>2:58</em></li>
+          <li><b>A4</b><span>Deck keys, mouse everywhere</span><i></i><em>3:41</em></li>
+          <li><b>A5</b><span>Seven skins, press <kbd>t</kbd></span><i></i><em>5:19</em></li>
+        </ol>
+      </div>
+      <div class="jcard-side">
+        <h3><b>B</b> the library</h3>
+        <ol>
+          <li><b>B1</b><span>Your folders, as they are</span><i></i><em>3:14</em></li>
+          <li><b>B2</b><span>Updates live while you copy</span><i></i><em>4:06</em></li>
+          <li><b>B3</b><span>Playlist, shuffle, repeat</span><i></i><em>3:47</em></li>
+          <li><b>B4</b><span>MP3 FLAC WAV OGG built in</span><i></i><em>4:25</em></li>
+          <li><b>B5</b><span>Remembers where you left off</span><i></i><em>5:02</em></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" id="keys">
+    <h2><span>KEYS</span></h2>
+    <div class="keys">
+      <div><kbd>space</kbd><span>play / pause</span></div>
+      <div><kbd>s</kbd><span>stop</span></div>
+      <div><kbd>z</kbd><kbd>b</kbd><span>previous / next</span></div>
+      <div><kbd>←</kbd><kbd>→</kbd><span>seek 5 s</span></div>
+      <div><kbd>[</kbd><kbd>]</kbd><span>seek 30 s</span></div>
+      <div><kbd>+</kbd><kbd>-</kbd><span>volume</span></div>
+      <div><kbd>enter</kbd><span>open folder · play</span></div>
+      <div><kbd>a</kbd><span>add to playlist</span></div>
+      <div><kbd>tab</kbd><span>library / playlist</span></div>
+      <div><kbd>/</kbd><span>filter</span></div>
+      <div><kbd>S</kbd><kbd>r</kbd><span>shuffle / repeat</span></div>
+      <div><kbd>t</kbd><span>next skin</span></div>
+      <div><kbd>?</kbd><span>all keys</span></div>
+      <div><kbd>q</kbd><span>quit</span></div>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>Apache 2.0 licensed · <a href="https://github.com/nullhard/cassetty">github.com/nullhard/cassetty</a></span>
+  <span>built with Bubble Tea, Lip Gloss &amp; beep</span>
+</footer>
+<div class="bands" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+
+<script src="site.js"></script>
+</body>
+</html>

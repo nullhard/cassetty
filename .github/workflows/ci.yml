@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # Nothing here feeds the Go build; the Website workflow covers docs/.
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "scripts/demo/**"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "scripts/demo/**"
+      - ".github/workflows/pages.yml"
+
+# No job publishes anything.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Run tests
+        run: go test -v -race ./...
+
+  # The release targets the test jobs never compile (linux/arm64, both
+  # darwin slices on Linux), built the way the Release workflow builds them.
+  build:
+    name: Build release archives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: scripts/release-build.sh "ci-${GITHUB_SHA::7}" "$RUNNER_TEMP/dist"
