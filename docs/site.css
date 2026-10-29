@@ -259,20 +259,19 @@ h2::after { content: ""; flex: 1; height: 2px; background: var(--focus); opacity
 .notes b { color: var(--text); }
 code { padding: 1px 6px; border-radius: 3px; background: var(--sel); color: var(--text); font-size: .95em; }
 
-/* j-card */
+/* keys, on a j-card */
+#keys { padding-bottom: 64px; }
 .jcard {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 40px;
-  padding: 0 28px 22px;
-  margin-bottom: 72px;
+  padding: 42px 28px 22px;
   background: var(--label-bg);
   color: var(--label-text);
   border-radius: 6px;
   box-shadow: 10px 10px 0 var(--shadow);
   position: relative;
   overflow: hidden;
-  padding-top: 42px;
 }
 .jcard::before {
   content: "";
@@ -283,18 +282,10 @@ code { padding: 1px 6px; border-radius: 3px; background: var(--sel); color: var(
 }
 .jcard h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--label-muted); }
 .jcard h3 b { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 3px; background: var(--b1); color: var(--label-bg); font-size: 15px; }
-.jcard ol { margin: 0; padding: 0; list-style: none; }
-.jcard li { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; font-size: 14px; }
-.jcard li b { color: var(--label-muted); font-weight: 400; width: 2em; flex: none; }
-.jcard li i { flex: 1; min-width: 12px; border-bottom: 2px dotted var(--label-muted); opacity: .45; transform: translateY(-4px); }
-.jcard li em { font-style: normal; color: var(--label-muted); font-size: 13px; }
+.jcard ul { margin: 0; padding: 0; list-style: none; }
+.jcard li { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; font-size: 14px; }
+.jcard li i { flex: 1; min-width: 12px; margin: 0 4px; border-bottom: 2px dotted var(--label-muted); opacity: .45; transform: translateY(-4px); }
 .jcard kbd { color: var(--label-text); background: transparent; border-color: var(--label-muted); box-shadow: none; }
-
-/* keys */
-#keys { padding-bottom: 64px; }
-.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px 24px; }
-.keys div { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.keys span { margin-left: 6px; }
 kbd {
   display: inline-block;
   min-width: 1.9em;

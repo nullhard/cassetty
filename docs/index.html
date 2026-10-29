@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>cassetty — a cassette deck music player for the terminal</title>
-<meta name="description" content="A terminal music player for macOS and Linux: spinning cassette reels, a seven-segment LCD, spectrum analyzer and seven skins.">
+<meta name="description" content="A cassette deck music player for your terminal. macOS and Linux.">
 <meta property="og:title" content="cassetty">
 <meta property="og:description" content="A cassette deck music player for the terminal. macOS and Linux.">
 <meta property="og:image" content="https://nullhard.github.io/cassetty/media/sunbleached.png">
@@ -38,7 +38,7 @@
   <section class="hero wrap">
     <div class="pitch">
       <h1>cassetty</h1>
-      <p class="lede">A cassette deck music player for your terminal. Spinning reels, a seven&#8209;segment LCD, a spectrum analyzer and your music folder.</p>
+      <p class="lede">A cassette deck music player for your terminal.</p>
       <p class="specs">macOS &amp; Linux · keyboard &amp; mouse · MP3 FLAC WAV OGG, more with ffmpeg</p>
     </div>
   </section>
@@ -87,55 +87,41 @@
       </div>
     </div>
     <ul class="notes">
-      <li><b>macOS:</b> downloaded the archive with a browser? Clear the quarantine flag once: <code>xattr -d com.apple.quarantine cassetty</code></li>
+      <li><b>macOS:</b> if you downloaded the archive with a browser, clear the quarantine flag once: <code>xattr -d com.apple.quarantine cassetty</code></li>
       <li><b>Linux:</b> plays through PulseAudio or PipeWire, falls back to ALSA.</li>
       <li><b>More formats:</b> with <code>ffmpeg</code> on your <code>PATH</code> cassetty also plays M4A/AAC/ALAC, Opus, AIFF, WMA, APE and more.</li>
     </ul>
   </section>
 
-  <section class="wrap">
-    <h2><span>TRACKLIST</span></h2>
-    <div class="jcard">
-      <div class="jcard-side">
-        <h3><b>A</b> the deck</h3>
-        <ol>
-          <li><b>A1</b><span>Reels spin, tape winds across</span><i></i><em>3:25</em></li>
-          <li><b>A2</b><span>Seven-segment LCD, scrolling title</span><i></i><em>4:12</em></li>
-          <li><b>A3</b><span>Spectrum analyzer, stereo VU</span><i></i><em>2:58</em></li>
-          <li><b>A4</b><span>Deck keys, mouse everywhere</span><i></i><em>3:41</em></li>
-          <li><b>A5</b><span>Seven skins, press <kbd>t</kbd></span><i></i><em>5:19</em></li>
-        </ol>
-      </div>
-      <div class="jcard-side">
-        <h3><b>B</b> the library</h3>
-        <ol>
-          <li><b>B1</b><span>Your folders, as they are</span><i></i><em>3:14</em></li>
-          <li><b>B2</b><span>Updates live while you copy</span><i></i><em>4:06</em></li>
-          <li><b>B3</b><span>Playlist, shuffle, repeat</span><i></i><em>3:47</em></li>
-          <li><b>B4</b><span>MP3 FLAC WAV OGG built in</span><i></i><em>4:25</em></li>
-          <li><b>B5</b><span>Remembers where you left off</span><i></i><em>5:02</em></li>
-        </ol>
-      </div>
-    </div>
-  </section>
-
   <section class="wrap" id="keys">
     <h2><span>KEYS</span></h2>
-    <div class="keys">
-      <div><kbd>space</kbd><span>play / pause</span></div>
-      <div><kbd>s</kbd><span>stop</span></div>
-      <div><kbd>z</kbd><kbd>b</kbd><span>previous / next</span></div>
-      <div><kbd>←</kbd><kbd>→</kbd><span>seek 5 s</span></div>
-      <div><kbd>[</kbd><kbd>]</kbd><span>seek 30 s</span></div>
-      <div><kbd>+</kbd><kbd>-</kbd><span>volume</span></div>
-      <div><kbd>enter</kbd><span>open folder · play</span></div>
-      <div><kbd>a</kbd><span>add to playlist</span></div>
-      <div><kbd>tab</kbd><span>library / playlist</span></div>
-      <div><kbd>/</kbd><span>filter</span></div>
-      <div><kbd>S</kbd><kbd>r</kbd><span>shuffle / repeat</span></div>
-      <div><kbd>t</kbd><span>next skin</span></div>
-      <div><kbd>?</kbd><span>all keys</span></div>
-      <div><kbd>q</kbd><span>quit</span></div>
+    <div class="jcard">
+      <div>
+        <h3><b>A</b> the deck</h3>
+        <ul>
+          <li><kbd>space</kbd><kbd>p</kbd><i></i><span>play / pause</span></li>
+          <li><kbd>s</kbd><i></i><span>stop</span></li>
+          <li><kbd>&lt;</kbd><kbd>&gt;</kbd><i></i><span>previous / next</span></li>
+          <li><kbd>←</kbd><kbd>→</kbd><i></i><span>seek 5 s</span></li>
+          <li><kbd>[</kbd><kbd>]</kbd><i></i><span>seek 30 s</span></li>
+          <li><kbd>+</kbd><kbd>-</kbd><i></i><span>volume</span></li>
+          <li><kbd>m</kbd><i></i><span>mute</span></li>
+          <li><kbd>t</kbd><i></i><span>next skin</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3><b>B</b> the library</h3>
+        <ul>
+          <li><kbd>enter</kbd><i></i><span>open folder · play</span></li>
+          <li><kbd>a</kbd><i></i><span>add to playlist</span></li>
+          <li><kbd>A</kbd><i></i><span>play, replacing playlist</span></li>
+          <li><kbd>tab</kbd><i></i><span>library / playlist</span></li>
+          <li><kbd>/</kbd><i></i><span>filter</span></li>
+          <li><kbd>S</kbd><kbd>r</kbd><i></i><span>shuffle / repeat</span></li>
+          <li><kbd>?</kbd><i></i><span>all keys</span></li>
+          <li><kbd>q</kbd><i></i><span>quit</span></li>
+        </ul>
+      </div>
     </div>
   </section>
 </main>

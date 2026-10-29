@@ -23,44 +23,12 @@
   <img src="docs/media/demo.gif" alt="cassetty browsing a library, playing an album and cycling through its skins" width="100%">
 </p>
 
-A terminal music player that looks like a cross-over between a cassette deck
-and the classic Winamp: an animated tape with spinning reels, an LCD with
-seven segment time, scrolling title, spectrum analyzer and VU meters, and a
-library browser that follows your folder structure.
+A cassette deck music player for your terminal.
 
 Built with [Bubble Tea v2](https://github.com/charmbracelet/bubbletea),
 [Lip Gloss](https://github.com/charmbracelet/lipgloss) and
 [beep](https://github.com/gopxl/beep). Runs on macOS and Linux, controlled by
 keyboard and mouse.
-
-## Features
-
-- **Animated cassette.** The reels spin while playing; tape moves from the
-  left pack to the right one as the track progresses (pack radius follows the
-  remaining tape area, and the smaller reel spins faster, like a real deck).
-  Seeking fast-forwards or rewinds the reels. The label shows title, artist,
-  album and track number; FLAC/WAV tapes are "Type IV metal".
-- **Winamp style LCD.** Big seven segment time with unlit "ghost" segments
-  (blinks while paused, click it or press `i` for remaining time), codec,
-  bitrate and sample rate, a scrolling marquee, a 40 Hz–16 kHz spectrum
-  analyzer with falling peak caps and stereo LED VU meters.
-- **Tape deck keys.** PREV · REW · PLAY · PAUSE · STOP · FF · NEXT · EJECT;
-  the active key stays "pressed down". Winamp's `z` `v` `b` work too.
-- **Library browser** rooted at your music folder. Folders first, natural
-  sort order ("2" before "10"), clickable breadcrumb, live filter (`/`).
-  `enter` on a track plays its folder starting there, `a` adds a track or a
-  whole folder (subfolders included) to the playlist, `A` plays it right away,
-  replacing the playlist.
-  The shown folder updates live: files and folders that are created, renamed
-  or deleted appear or disappear right away, and sizes catch up while a copy
-  is still running.
-- **Playlist** with shuffle, repeat off/all/one, reordering and removal.
-- **Mouse everywhere.** Click the keys, click or drag the seek bar and the
-  volume wedge, scroll lists (or the deck for volume), double-click to open or
-  play, right-click to enqueue, click the cassette to play/pause.
-- **Seven [skins](#skins)**, `t` cycles through them.
-- Remembers volume, theme (unless the config sets one), shuffle/repeat and
-  the last folder between runs.
 
 ## Install
 
@@ -135,7 +103,7 @@ leaves that root folder.
 |---|---|---|---|
 | `space` `p` | play / pause | `↑↓` `jk` | move (`pgup` `pgdn` `g` `G`) |
 | `s` `v` | stop | `enter` `l` | open folder · play track |
-| `z` `b` | previous · next (`<` `>` `n`) | `backspace` `h` | parent folder |
+| `<` `>` | previous · next (`z` `b` `n`) | `backspace` `h` | parent folder |
 | `←` `→` | seek 5 s | `~` | library root |
 | `shift+←` `shift+→` | seek 30 s (`[` `]`) | `a` | add to playlist |
 | `+` `-` | volume | `A` | play, replacing playlist |
@@ -157,12 +125,12 @@ Press `t` to cycle, pass `-theme`, or set `theme` in the config.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/media/sunbleached.png" alt="sunbleached skin"><br><b>sunbleached</b> · a rainbow tape that spent a summer on the dashboard (default)</td>
-    <td width="50%"><img src="docs/media/silverface.png" alt="silverface skin"><br><b>silverface</b> · brushed aluminium hi-fi with a warmly lit meter window</td>
+    <td width="50%"><img src="docs/media/sunbleached.png" alt="sunbleached skin"><br><b>sunbleached</b> · faded rainbow (default)</td>
+    <td width="50%"><img src="docs/media/silverface.png" alt="silverface skin"><br><b>silverface</b> · brushed aluminium hi-fi</td>
   </tr>
   <tr>
-    <td><img src="docs/media/cyberdeck.png" alt="cyberdeck skin"><br><b>cyberdeck</b> · acid yellow, hot magenta and electric cyan on black glass</td>
-    <td><img src="docs/media/classic.png" alt="classic skin"><br><b>classic</b> · Winamp green</td>
+    <td><img src="docs/media/cyberdeck.png" alt="cyberdeck skin"><br><b>cyberdeck</b> · yellow, magenta and cyan on black</td>
+    <td><img src="docs/media/classic.png" alt="classic skin"><br><b>classic</b> · green LCD</td>
   </tr>
   <tr>
     <td><img src="docs/media/amber.png" alt="amber skin"><br><b>amber</b> · amber monochrome</td>
@@ -181,6 +149,7 @@ or `$CASSETTY_CONFIG`). Create a commented one with `cassetty -init-config`:
 
 ```toml
 music_dir = "~/Music"      # root of the library (unset: ~/Music, else the current folder)
+# themes: sunbleached, classic, amber, vfd, synthwave, silverface, cyberdeck
 theme = "sunbleached"      # always start in this theme (unset: the last one used)
 volume = 70                # initial volume in percent
 show_hidden = false        # list dot files and folders
