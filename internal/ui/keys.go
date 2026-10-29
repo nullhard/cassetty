@@ -28,8 +28,8 @@ func newKeyMap() keyMap {
 	return keyMap{
 		PlayPause: b([]string{"space", "p"}, "space", "play/pause"),
 		Stop:      b([]string{"s", "v"}, "s/v", "stop"),
-		Prev:      b([]string{"z", "<"}, "z/<", "previous"),
-		Next:      b([]string{"b", "n", ">"}, "b/n/>", "next"),
+		Prev:      b([]string{"<", "z"}, "</z", "previous"),
+		Next:      b([]string{">", "b", "n"}, ">/b/n", "next"),
 
 		SeekBack:    b([]string{"left"}, "←", "rewind"),
 		SeekFwd:     b([]string{"right"}, "→", "fast forward"),
